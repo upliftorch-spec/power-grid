@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="canonical" href="https://upliftorch.com/tools/power-grid/en/">
+<link rel="alternate" hreflang="zh-TW" href="https://upliftorch.com/tools/power-grid/">
+<link rel="alternate" hreflang="en" href="https://upliftorch.com/tools/power-grid/en/">
+<link rel="alternate" hreflang="x-default" href="https://upliftorch.com/tools/power-grid/en/">
+<title>Taiwan Real-Time Power Dashboard | Taipower Supply & Generation</title>
+<meta name="description" content="Taiwan real-time power dashboard showing Taipower supply capacity, operating reserve rate, generation mix by fuel type, and unit-level status. Monitor Taiwan's electricity grid live.">
+<meta name="keywords" content="Taiwan power,Taipower,real-time electricity,operating reserve,power generation,renewable energy,solar,wind,power grid,power unit generation,unit status,LNG power,coal power,solar power,wind power,hydroelectric,nuclear power,pumped storage,Tatan power plant,Tongxiao power plant,Xingda power plant,Taichung power plant,Linkou power plant,Talin power plant,IPP,Mailiao,Hoping,offshore wind,reserve margin,power dispatch,net generation,installed capacity,duck curve,electricity demand,peak load,power supply,blackout warning">
+
+<meta property="og:title" content="Taiwan Real-Time Power Dashboard | Live Grid Status">
+<meta property="og:description" content="Live Taipower data: supply capacity, operating reserve, generation mix by fuel type, and unit-level status.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f0f4f8;--surface:#fff;--text:#1e293b;--text-secondary:#64748b;
+  --border:#e2e8f0;--primary:#3b82f6;--primary-dark:#2563eb;--primary-light:#dbeafe;
+  --header-bg:linear-gradient(135deg,#0f172a 0%,#1e3a5f 40%,#f59e0b 100%);
+  --green:#22c55e;--yellow:#eab308;--red:#ef4444;--orange:#f97316;
+  --radius:14px;--shadow:0 2px 16px rgba(0,0,0,.06);--shadow-lg:0 8px 32px rgba(0,0,0,.1);
+}
+[data-theme="dark"]{
+  --bg:#0f172a;--surface:#1e293b;--text:#e2e8f0;--text-secondary:#94a3b8;
+  --border:#334155;--primary:#60a5fa;--primary-dark:#93bbfd;--primary-light:rgba(59,130,246,.15);
+  --header-bg:linear-gradient(135deg,#020617 0%,#0f172a 40%,#92400e 100%);
+  --shadow:0 2px 16px rgba(0,0,0,.3);--shadow-lg:0 8px 32px rgba(0,0,0,.4);
+}
+html,body{overflow-x:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--primary);text-decoration:none}
+a:hover{text-decoration:underline}
+
+header{background:var(--header-bg);color:#fff;padding:24px 0;position:sticky;top:0;z-index:100;box-shadow:0 4px 24px rgba(0,0,0,.2)}
+.header-inner{max-width:1200px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-icon{width:42px;height:42px;background:rgba(255,255,255,.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;backdrop-filter:blur(8px)}
+.brand h1{font-size:21px;font-weight:700;letter-spacing:-.3px}
+.brand span{font-size:13px;opacity:.75;display:block;margin-top:2px}
+.header-actions{display:flex;align-items:center;gap:12px}
+.lang-switch{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);padding:7px 16px;border-radius:8px;font-size:13px;cursor:pointer;transition:all .2s;backdrop-filter:blur(8px)}
+.lang-switch:hover{background:rgba(255,255,255,.22)}
+.theme-toggle{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);width:38px;height:38px;border-radius:8px;font-size:18px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+.theme-toggle:hover{background:rgba(255,255,255,.22)}
+
+.container{max-width:1200px;margin:0 auto;padding:24px}
+.breadcrumb{font-size:13px;color:var(--text-secondary,#64748b);margin-bottom:20px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.breadcrumb a{color:var(--text-secondary,#64748b)}
+.breadcrumb a:hover{color:var(--primary,#ec4899)}
+.breadcrumb .sep{opacity:.5}
+.breadcrumb [aria-current]{color:var(--text,#1e293b);font-weight:600}
+
+.summary-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+.summary-card{background:var(--surface);border-radius:var(--radius);padding:20px 16px;text-align:center;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:transform .2s}
+.summary-card:hover{transform:translateY(-2px)}
+.summary-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.summary-card:nth-child(1)::before{background:var(--primary)}
+.summary-card:nth-child(2)::before{background:var(--green)}
+.summary-card:nth-child(3)::before{background:var(--yellow)}
+.summary-card:nth-child(4)::before{background:var(--orange)}
+.summary-card .icon{font-size:20px;margin-bottom:6px}
+.summary-card .num{font-size:30px;font-weight:800;letter-spacing:-.5px}
+.summary-card .label{font-size:12px;color:var(--text-secondary);margin-top:4px;font-weight:500}
+.summary-card .unit{font-size:14px;font-weight:400;opacity:.7}
+
+.status-badge{display:inline-block;padding:4px 14px;border-radius:20px;font-size:13px;font-weight:700;color:#fff;margin-top:6px}
+.status-green{background:#22c55e}
+.status-yellow{background:#eab308;color:#1e293b}
+.status-orange{background:#f97316}
+.status-red{background:#ef4444}
+
+.chart-section{background:var(--surface);border-radius:var(--radius);padding:28px;box-shadow:var(--shadow);margin-bottom:28px}
+.chart-section h2{font-size:20px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.chart-section .section-desc{color:var(--text-secondary);margin-bottom:20px;font-size:14px}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.chart-box{position:relative;min-height:300px}
+.chart-box canvas{max-height:350px}
+
+.unit-section{background:var(--surface);border-radius:var(--radius);padding:28px;box-shadow:var(--shadow);margin-bottom:28px}
+.unit-section h2{font-size:20px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.unit-section .section-desc{color:var(--text-secondary);margin-bottom:20px;font-size:14px}
+.fuel-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.fuel-tab{padding:8px 18px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:13px;font-weight:600;transition:all .2s;color:var(--text)}
+.fuel-tab:hover{border-color:var(--primary);color:var(--primary)}
+.fuel-tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.unit-table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;border-radius:var(--radius);overflow:hidden}
+.unit-table th{padding:12px 14px;text-align:left;background:#1e3a5f;color:#fff;font-weight:600;font-size:12px;white-space:nowrap}
+[data-theme="dark"] .unit-table th{background:#0f172a}
+.unit-table td{padding:10px 14px;border-bottom:1px solid var(--border)}
+.unit-table tr:last-child td{border-bottom:none}
+.unit-table tr:hover td{background:var(--bg)}
+.unit-table .bar-cell{width:30%}
+.unit-bar{height:8px;border-radius:4px;background:var(--border);overflow:hidden;min-width:60px}
+.unit-bar-fill{height:100%;border-radius:4px;transition:width .5s}
+.unit-status{font-size:11px;padding:3px 10px;border-radius:12px;font-weight:600;white-space:nowrap}
+.unit-status-normal{background:#dcfce7;color:#166534}
+.unit-status-repair{background:#fef3c7;color:#92400e}
+.unit-status-offline{background:#fee2e2;color:#991b1b}
+[data-theme="dark"] .unit-status-normal{background:rgba(34,197,94,.15);color:#86efac}
+[data-theme="dark"] .unit-status-repair{background:rgba(234,179,8,.15);color:#fde047}
+[data-theme="dark"] .unit-status-offline{background:rgba(239,68,68,.15);color:#fca5a5}
+
+.load-curve-section{background:var(--surface);border-radius:var(--radius);padding:28px;box-shadow:var(--shadow);margin-bottom:28px}
+.load-curve-section h2{font-size:20px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.load-curve-section .section-desc{color:var(--text-secondary);margin-bottom:20px;font-size:14px}
+
+.content-section{background:var(--surface);border-radius:var(--radius);padding:32px;box-shadow:var(--shadow);margin-bottom:36px}
+.content-section h2{font-size:22px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.content-section h2 .section-icon{font-size:24px}
+.content-section > .section-desc{color:var(--text-secondary);margin-bottom:20px;font-size:14px;line-height:1.8;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.content-section h3{font-size:17px;margin:24px 0 10px;color:var(--primary-dark)}
+.content-section p{color:var(--text-secondary);line-height:1.9;margin-bottom:14px}
+.content-section ul{color:var(--text-secondary);line-height:1.9;margin:0 0 14px 20px}
+.content-section li{margin-bottom:6px}
+
+.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:18px;margin-top:20px}
+.info-card{border:1px solid var(--border);border-radius:var(--radius);padding:24px;transition:all .2s;background:var(--surface)}
+.info-card:hover{box-shadow:var(--shadow-lg);border-color:var(--primary);transform:translateY(-2px)}
+.info-card-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.info-card-header .icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.info-card-header h3{margin:0;font-size:16px;color:var(--text)}
+.info-card-header .subtitle{font-size:12px;color:var(--text-secondary);font-weight:400;margin-top:2px}
+.info-card p{font-size:13px;color:var(--text-secondary);line-height:1.8;margin:0 0 10px}
+.info-card .stat{font-size:12px;padding:6px 12px;background:var(--bg);border-radius:8px;color:var(--text-secondary);display:inline-block}
+
+.faq{background:var(--surface);border-radius:var(--radius);padding:32px;box-shadow:var(--shadow);margin-bottom:36px}
+.faq h2{font-size:22px;margin-bottom:8px}
+.faq > p{color:var(--text-secondary);margin-bottom:20px;font-size:14px}
+.faq-item{border-bottom:1px solid var(--border);padding:18px 0}
+.faq-item:last-child{border-bottom:none}
+.faq-q{font-weight:700;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;transition:color .2s}
+.faq-q:hover{color:var(--primary)}
+.faq-q::after{content:"+";font-size:18px;transition:transform .3s;color:var(--primary);flex-shrink:0}
+.faq-item.open .faq-q::after{transform:rotate(45deg)}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .4s ease;color:var(--text-secondary);line-height:1.9}
+.faq-item.open .faq-a{max-height:600px;padding-top:12px}
+
+.ref-tag{font-size:10px;vertical-align:super;color:var(--primary);cursor:pointer;font-weight:700;text-decoration:none;margin-left:1px}
+.ref-list{list-style:none;counter-reset:ref;padding:0}
+.ref-list li{counter-increment:ref;font-size:13px;color:var(--text-secondary);line-height:1.8;padding:8px 0;border-bottom:1px solid var(--border);display:flex;gap:8px}
+.ref-list li:last-child{border-bottom:none}
+.ref-list li::before{content:"[" counter(ref) "]";font-weight:700;color:var(--primary);flex-shrink:0;min-width:28px}
+.ref-list li a{color:var(--primary);word-break:break-all}
+
+.loading{text-align:center;padding:60px 20px}
+.loading .spinner{width:48px;height:48px;border:4px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-msg{text-align:center;padding:40px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow)}
+.error-msg h3{color:#ef4444;margin-bottom:8px}
+.retry-btn{margin-top:12px;padding:10px 24px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px}
+
+footer{background:linear-gradient(135deg,#0f172a,#1e293b);color:#94a3b8;padding:40px 20px;text-align:center;font-size:13px;line-height:2.2}
+footer a{color:#93c5fd}
+footer .tools{margin-bottom:16px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+footer .tools a{background:rgba(255,255,255,.06);padding:4px 14px;border-radius:6px;transition:background .2s}
+footer .tools a:hover{background:rgba(255,255,255,.12);text-decoration:none}
+
+@media(max-width:768px){
+  .summary-bar{grid-template-columns:repeat(2,1fr)}
+  .chart-grid{grid-template-columns:1fr}
+  .info-grid{grid-template-columns:1fr}
+  .container{padding:16px}
+  .chart-section,.unit-section,.load-curve-section{padding:20px}
+}
+@media(max-width:600px){
+  .brand h1{font-size:17px}
+  .header-inner{gap:8px}
+  .summary-bar{grid-template-columns:1fr 1fr}
+  .fuel-tabs{gap:4px}
+  .fuel-tab{padding:6px 12px;font-size:12px}
+}
+</style>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://upliftorch.com/"},{"@type":"ListItem","position":2,"name":"Free Online Tools","item":"https://upliftorch.com/tools-en"},{"@type":"ListItem","position":3,"name":"Power Dashboard","item":"https://upliftorch.com/tools/power-grid/en/"}]}
+</script>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="#fbbf24" stroke="#fff" stroke-width="1" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <h1>Taiwan Real-Time Power Dashboard</h1>
+        <span id="updateTime">Loading data...</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">🌙</button>
+      <a href="https://upliftorch.com/tools/power-grid/" class="lang-switch">繁中</a>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <nav class="breadcrumb" aria-label="breadcrumb">
+    <a href="https://upliftorch.com/">Home</a>
+    <span class="sep">›</span>
+    <a href="https://upliftorch.com/tools-en">Free Online Tools</a>
+    <span class="sep">›</span>
+    <span aria-current="page">Power Dashboard</span>
+  </nav>
+
+  <div class="summary-bar" id="summaryBar">
+    <div class="summary-card"><div class="icon">⚡</div><div class="num" id="currentLoad">--</div><div class="label">Current Load <span class="unit">MW</span></div></div>
+    <div class="summary-card"><div class="icon">🏭</div><div class="num" id="maxSupply">--</div><div class="label">Max Supply Capacity <span class="unit">MW</span></div></div>
+    <div class="summary-card"><div class="icon">📊</div><div class="num" id="reserveRate">--</div><div class="label">Operating Reserve Rate</div></div>
+    <div class="summary-card"><div class="icon">🔋</div><div class="num" id="reserveMW">--</div><div class="label">Operating Reserve <span class="unit">MW</span></div></div>
+  </div>
+  <div style="text-align:center;margin:-18px 0 24px" id="statusBadgeContainer"></div>
+
+  <div class="chart-section">
+    <h2><span class="section-icon">📊</span>Generation Mix</h2>
+    <p class="section-desc">Real-time generation share and installed capacity by fuel type. Data updated every 10 minutes from Taipower.</p>
+    <div class="chart-grid">
+      <div class="chart-box"><canvas id="genChart"></canvas></div>
+      <div class="chart-box"><canvas id="capChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="load-curve-section">
+    <h2><span class="section-icon">📈</span>Today's Load Curve</h2>
+    <p class="section-desc">Electricity load throughout the day, stacked by fuel type.</p>
+    <div style="position:relative;min-height:350px"><canvas id="loadCurveChart"></canvas></div>
+  </div>
+
+  <div class="unit-section">
+    <h2><span class="section-icon">🏭</span>Unit-Level Status</h2>
+    <p class="section-desc">Real-time status of each power generation unit including capacity, net generation, and operating status. Click tabs to filter by fuel type.</p>
+    <div class="fuel-tabs" id="fuelTabs"></div>
+    <div style="overflow-x:auto">
+      <table class="unit-table" id="unitTable">
+        <thead><tr><th>Unit</th><th>Fuel Type</th><th>Capacity (MW)</th><th>Net Gen. (MW)</th><th>Load Factor</th><th class="bar-cell">Load</th><th>Status</th></tr></thead>
+        <tbody id="unitTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <section class="content-section">
+    <h2><span class="section-icon">🔌</span>Understanding Taiwan's Power Grid</h2>
+    <p class="section-desc">Taiwan operates an isolated power grid (not interconnected with other countries), meaning all electricity must be generated domestically in real-time. This makes operating reserve management critically important. Understanding each generation type helps explain Taiwan's energy transition challenges.</p>
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="info-card-header">
+          <div class="icon" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8)">🔥</div>
+          <div><h3>Natural Gas (LNG)</h3><div class="subtitle">Combined Cycle Gas Turbine</div></div>
+        </div>
+        <p>Currently Taiwan's primary power source, accounting for ~40% of total generation. CCGT plants achieve over 60% thermal efficiency with half the carbon emissions of coal. Taipower's six major gas plants (Tatan, Tongxiao, Xingda, Southern, Taichung, Talin) serve as baseload and mid-load workhorses.</p>
+        <div class="stat">Carbon intensity: ~0.37 kgCO2/kWh</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-header">
+          <div class="icon" style="background:linear-gradient(135deg,#6b7280,#374151)">🏭</div>
+          <div><h3>Coal</h3><div class="subtitle">Coal-Fired Power Plants</div></div>
+        </div>
+        <p>Traditional baseload source with higher carbon emissions and air pollution. Major plants include Taichung, Linkou, and Xingda. Coal is being gradually reduced under decarbonization policies, with "friendly load reduction" during poor air quality periods. Government targets coal below 20% by 2030.</p>
+        <div class="stat">Carbon intensity: ~0.84 kgCO2/kWh</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-header">
+          <div class="icon" style="background:linear-gradient(135deg,#22c55e,#15803d)">☀️</div>
+          <div><h3>Solar</h3><div class="subtitle">Solar Photovoltaic</div></div>
+        </div>
+        <p>Installed capacity has exceeded 14 GW, making it the leading renewable source. Concentrated in central and southern Taiwan, solar can contribute over 10 GW during summer midday peaks. Limitations include zero output at night and reduced efficiency on cloudy days, requiring energy storage for grid balancing.</p>
+        <div class="stat">2025 target: 20 GW installed capacity</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-header">
+          <div class="icon" style="background:linear-gradient(135deg,#06b6d4,#0e7490)">💨</div>
+          <div><h3>Wind</h3><div class="subtitle">Onshore & Offshore Wind</div></div>
+        </div>
+        <p>Both onshore and offshore wind capacity are growing steadily. The Taiwan Strait is one of the world's best offshore wind corridors, with peak generation during the winter northeast monsoon season. Offshore wind targets: 5.7 GW by 2025, 13.1 GW by 2030.</p>
+        <div class="stat">Capacity factor: Onshore 25-30% | Offshore 40-50%</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-header">
+          <div class="icon" style="background:linear-gradient(135deg,#3b82f6,#1e40af)">💧</div>
+          <div><h3>Hydroelectric</h3><div class="subtitle">Conventional & Pumped Storage</div></div>
+        </div>
+        <p>Includes conventional hydro (Deji, Tsengwen, Feitsui reservoirs) and pumped-storage hydro (Daguan II, Mingtan). Pumped storage is currently the largest-scale energy storage method — pumping water uphill during off-peak and releasing during peak demand, playing a critical role in grid dispatch.</p>
+        <div class="stat">Pumped storage: ~2.6 GW (key dispatch tool)</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-header">
+          <div class="icon" style="background:linear-gradient(135deg,#a855f7,#7c3aed)">🔋</div>
+          <div><h3>Energy Storage (ESS)</h3><div class="subtitle">Battery Energy Storage Systems</div></div>
+        </div>
+        <p>Battery storage (BESS) is growing rapidly, used for frequency regulation, peak-shaving, and renewable energy integration. Taipower targets over 1 GW of storage by 2025. ESS can respond to grid frequency changes in milliseconds, maintaining supply stability.</p>
+        <div class="stat">Response time: milliseconds | Efficiency: 85-95%</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content-section">
+    <h2><span class="section-icon">🚦</span>Supply Status Indicators</h2>
+    <p class="section-desc">Taipower uses a four-level color-coded system based on the operating reserve rate to indicate grid supply adequacy and blackout risk. Operating Reserve = Max Supply Capacity - Estimated Peak Load.</p>
+    <div class="info-grid">
+      <div class="info-card" style="border-left:4px solid #22c55e">
+        <h3 style="color:#22c55e;margin:0 0 8px">🟢 Adequate Supply (≥ 10%)</h3>
+        <p>Operating reserve rate above 10%. Supply is comfortable with sufficient margin to handle unexpected unit trips or sudden load increases. This is the ideal operating state.</p>
+      </div>
+      <div class="info-card" style="border-left:4px solid #eab308">
+        <h3 style="color:#eab308;margin:0 0 8px">🟡 Tight Supply (6% ~ 10%)</h3>
+        <p>Reserve is low but still adequate for typical contingencies. Taipower may activate demand response programs (reducing large industrial loads) as a precaution.</p>
+      </div>
+      <div class="info-card" style="border-left:4px solid #f97316">
+        <h3 style="color:#f97316;margin:0 0 8px">🟠 Supply Alert (≤ 6%)</h3>
+        <p>Insufficient system margin. If another large unit trips, rolling blackouts become a real risk. Taipower activates emergency generators and issues power-saving appeals.</p>
+      </div>
+      <div class="info-card" style="border-left:4px solid #ef4444">
+        <h3 style="color:#ef4444;margin:0 0 8px">🔴 Blackout Warning (≤ 500 MW)</h3>
+        <p>Operating reserve below 900 MW triggers a blackout warning. Below 500 MW, rolling blackouts by district may be implemented. This is the most critical alert level.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="faq" id="faq">
+    <h2>Frequently Asked Questions</h2>
+    <p>Common questions about Taiwan's electricity system and this dashboard.</p>
+    <div class="faq-item"><div class="faq-q">What is the operating reserve rate and why does it matter?</div><div class="faq-a">Operating Reserve Rate = (Max Supply Capacity - Estimated Peak Load) / Estimated Peak Load x 100%. It reflects the safety margin of the power system — a higher reserve means greater ability to handle unexpected generator failures or sudden load increases. Internationally, a reserve rate above 15% is considered healthy, but Taiwan's summers frequently operate in the 6-10% "tight" range.</div></div>
+    <div class="faq-item"><div class="faq-q">Why is electricity supply tighter in summer?</div><div class="faq-a">Summer heat (June-September) drives massive air conditioning demand, pushing peak load above 40,000 MW. Some units are in scheduled maintenance (ideally done in spring/autumn). Additionally, solar output drops sharply after sunset (the "duck curve" effect), creating a net load peak around 5-7 PM. These three factors combine to make summer the most strained period for Taiwan's grid.</div></div>
+    <div class="faq-item"><div class="faq-q">Where does Taiwan's electricity come from?</div><div class="faq-a">Taiwan's 2024 generation mix was approximately: Natural Gas 42%, Coal 32%, Renewables 12% (primarily solar), Nuclear 6%, Hydro 4%, Others 4%. The government's energy transition target is "Gas 50%, Coal 30%, Renewables 20%" by 2025. As nuclear plants are decommissioned, the gap is being filled by gas and renewables.</div></div>
+    <div class="faq-item"><div class="faq-q">What is the "Duck Curve" and how does it affect Taiwan?</div><div class="faq-a">The Duck Curve describes the shape of the net load curve (total load minus solar generation) when solar capacity is high — net load drops sharply during midday as solar peaks, then ramps up steeply as the sun sets. For Taiwan, this means potentially needing to curtail thermal plants at noon, then rapidly ramping up thousands of MW within hours in the evening, creating extreme dispatch challenges. Energy storage is key to solving the duck curve.</div></div>
+    <div class="faq-item"><div class="faq-q">What are IPPs and how much power do they provide?</div><div class="faq-a">IPPs (Independent Power Producers) provide over 20% of Taiwan's electricity. Gas-fired IPPs include Haihu, Xintao, Guoguang, Xingzhang, Jiahui, and Fengde. Coal-fired IPPs include Mailiao (Formosa Plastics) and Hoping. IPPs sell electricity to Taipower under Power Purchase Agreements (PPAs) for national grid dispatch. Co-generation facilities also contribute significantly.</div></div>
+    <div class="faq-item"><div class="faq-q">Where does this data come from? How often is it updated?</div><div class="faq-a">All data comes 100% from Taiwan Power Company's open data (taipower.com.tw), including real-time supply information (loadpara), unit-level generation (genary), and fuel-type time series (loadfueltype). Data is updated every 10 minutes by Taipower. All values originate from Taipower's Energy Management System (EMS) and may have minor discrepancies from actual values due to maintenance or transmission delays.</div></div>
+    <div class="faq-item"><div class="faq-q">What is "Friendly Load Reduction"?</div><div class="faq-a">When air quality deteriorates (e.g., AQI reaches orange warning level), Taipower voluntarily reduces coal plant output to lower SOx, NOx, and PM2.5 emissions — called "friendly load reduction." Reduction is typically 20-40% of rated capacity. While this temporarily reduces supply capacity, it effectively improves regional air quality. Taichung Power Plant has significantly reduced emissions through this measure in recent years.</div></div>
+    <div class="faq-item"><div class="faq-q">Why is Taiwan pursuing energy transition?</div><div class="faq-a">Three key drivers: (1) Carbon commitments — Taiwan targets net-zero by 2050, and the power sector accounts for ~60% of national emissions; (2) Nuclear phase-out — all three nuclear plants (six units) are being decommissioned, requiring replacement capacity; (3) Air pollution — coal plants are a major pollution source with strong public pressure to reduce. The transition path relies on expanding renewables (solar + wind) with gas as a bridge, developing energy storage, and building smart grids.</div></div>
+  </section>
+
+  <section class="content-section" id="references">
+    <h2><span class="section-icon">📖</span>References</h2>
+    <ol class="ref-list">
+      <li>Taiwan Power Company (2026) — Real-time power supply information. <a href="https://www.taipower.com.tw/en/page.aspx?mid=206" target="_blank" rel="noopener">taipower.com.tw</a></li>
+      <li>Bureau of Energy, MOEA (2025) — Monthly energy statistics: Taiwan power structure. <a href="https://www.moeaea.gov.tw/" target="_blank" rel="noopener">moeaea.gov.tw</a></li>
+      <li>Taiwan Power Company (2026) — Real-time unit generation data. <a href="https://www.taipower.com.tw/d006/loadGraph/loadGraph/genshx_e.html" target="_blank" rel="noopener">taipower.com.tw</a></li>
+      <li>Government Open Data Platform — Taipower open datasets. <a href="https://data.gov.tw/en" target="_blank" rel="noopener">data.gov.tw</a></li>
+      <li>International Energy Agency (2024) — Taiwan Energy Policy Review. <a href="https://www.iea.org/" target="_blank" rel="noopener">iea.org</a></li>
+    </ol>
+  </section>
+
+</div>
+
+<footer>
+  <div class="tools">
+    <a href="https://upliftorch.com/tools/air-quality/en/">Air Quality</a>
+    <a href="https://upliftorch.com/tools/food-safety/en/">Food Safety</a>
+    <a href="https://upliftorch.com/tools/convert-to-webp/">Image to WebP</a>
+    <a href="https://upliftorch.com/tools/mp3-cutter/">MP3 Cutter</a>
+    <a href="https://upliftorch.com/tools/create-ico/">ICO Generator</a>
+    <a href="https://upliftorch.com/tools/url-codec/">URL Codec</a>
+  </div>
+  <div>Data source: <a href="https://www.taipower.com.tw/en/page.aspx?mid=206" target="_blank" rel="noopener">Taiwan Power Company</a> (Open Data)</div>
+  <div>&copy; <script>document.write(new Date().getFullYear())</script> Upliftorch. All rights reserved.</div>
+</footer>
+
+<script>
+(() => {
+  'use strict';
+
+  const DATA_URL = 'https://storage.googleapis.com/upliftorch_tool/power-grid/data/power-grid-data.json';
+
+  const FUEL_COLORS = {
+    'LNG': '#3b82f6', 'Coal': '#6b7280', 'IPP-LNG': '#60a5fa', 'IPP-Coal': '#9ca3af',
+    'Co-Gen': '#f97316', 'Fuel Oil': '#a855f7', 'Solar': '#eab308', 'Wind': '#06b6d4',
+    'Hydro': '#22c55e', 'ESS': '#8b5cf6', 'Other RE': '#10b981', 'Pumped': '#14b8a6', 'ESS Load': '#ef4444',
+  };
+
+  const FUEL_LABELS = {
+    'LNG': 'Natural Gas', 'Coal': 'Coal', 'IPP-LNG': 'IPP Gas', 'IPP-Coal': 'IPP Coal',
+    'Co-Gen': 'Co-Generation', 'Fuel Oil': 'Fuel Oil', 'Solar': 'Solar', 'Wind': 'Wind',
+    'Hydro': 'Hydro', 'ESS': 'Storage', 'Other RE': 'Other RE', 'Pumped': 'Pumped Storage', 'ESS Load': 'ESS Load',
+  };
+
+  const FUEL_MAP = {
+    '燃氣(LNG)': 'LNG', '民營電廠-燃氣(IPP-LNG)': 'IPP-LNG', '燃煤(Coal)': 'Coal',
+    '民營電廠-燃煤(IPP-Coal)': 'IPP-Coal', '汽電共生(Co-Gen)': 'Co-Gen', '燃料油(Fuel Oil)': 'Fuel Oil',
+    '太陽能(Solar)': 'Solar', '風力(Wind)': 'Wind', '水力(Hydro)': 'Hydro',
+    '儲能(Energy Storage System)': 'ESS', '其它再生能源(Other Renewable Energy)': 'Other RE',
+    '抽蓄發電(Pumped Storage)': 'Pumped', '儲能負載(Energy Storage System Load)': 'ESS Load',
+  };
+
+  const CSV_FUEL_MERGE = { 'Pumped': 'Hydro' };
+
+  let genChart = null, capChart = null, loadCurveChart = null;
+  let allUnits = [];
+  let activeFuel = 'all';
+
+  function esc(str) {
+    const el = document.createElement('span');
+    el.textContent = str;
+    return el.innerHTML;
+  }
+
+  function parseFuelType(raw) {
+    if (!raw) return 'Other';
+    const cleaned = raw.replace(/<[^>]*>/g, '').trim();
+    return FUEL_MAP[cleaned] || 'Other';
+  }
+
+  function getStatusInfo(rateNum) {
+    if (rateNum >= 10) return { label: 'Adequate Supply', cls: 'status-green', color: '#22c55e' };
+    if (rateNum >= 6) return { label: 'Tight Supply', cls: 'status-yellow', color: '#eab308' };
+    if (rateNum >= 3) return { label: 'Supply Alert', cls: 'status-orange', color: '#f97316' };
+    return { label: 'Blackout Warning', cls: 'status-red', color: '#ef4444' };
+  }
+
+  // #3: 狀態判斷 — 具體到一般排列，部分X 在 X 之前
+  function getUnitStatus(note, generation, capacity) {
+    if (note.includes('試俥') || note.includes('新機組')) return { cls: 'unit-status-repair', label: 'Commissioning' };
+    if (note.includes('部分故障')) return { cls: 'unit-status-repair', label: 'Partial Fault' };
+    if (note.includes('部分檢修')) return { cls: 'unit-status-repair', label: 'Partial Maint.' };
+    if (note.includes('歲修')) return { cls: 'unit-status-offline', label: 'Annual Maint.' };
+    if (note.includes('環保停機')) return { cls: 'unit-status-offline', label: 'Eco Shutdown' };
+    if (note.includes('檢修')) return { cls: generation <= 0 ? 'unit-status-offline' : 'unit-status-repair', label: 'Maintenance' };
+    if (note.includes('停機')) return { cls: 'unit-status-offline', label: 'Shutdown' };
+    if (note.includes('故障')) return { cls: 'unit-status-repair', label: 'Fault' };
+    if (note.includes('友善降載')) return { cls: 'unit-status-repair', label: 'Eco Reduction' };
+    if (note.includes('配合綠電')) return { cls: 'unit-status-repair', label: 'Green Priority' };
+    if (generation <= 0 && capacity > 0) return { cls: 'unit-status-offline', label: 'Offline' };
+    return { cls: 'unit-status-normal', label: 'Online' };
+  }
+
+  function parseLoadPara(text) {
+    const loadMatch = text.match(/loadInfo\s*=\s*\[([\s\S]*?)\]/);
+    const ydayMatch = text.match(/loadInfoYday\s*=\s*\[([\s\S]*?)\]/);
+    if (!loadMatch) return null;
+    const parseLine = l => l.replace(/"/g, '').replace(/,\s*$/, '').trim();
+    const lines = loadMatch[1].split('\n').map(parseLine).filter(Boolean);
+    const result = {
+      currentLoad: parseFloat(lines[0]?.replace(/,/g, '')) || 0,
+      maxSupply: parseFloat(lines[1]?.replace(/,/g, '')) || 0,
+      peakCapacity: parseFloat(lines[2]?.replace(/,/g, '')) || 0,
+      updateTime: lines[3] || '',
+    };
+    result.reserveMW = result.maxSupply - result.currentLoad;
+    result.reserveRate = result.currentLoad > 0 ? ((result.reserveMW / result.currentLoad) * 100) : 0;
+    if (ydayMatch) {
+      const yLines = ydayMatch[1].split('\n').map(parseLine).filter(Boolean);
+      result.ydayPeak = parseFloat(yLines[0]?.replace(/,/g, '')) || 0;
+    }
+    return result;
+  }
+
+  function parseGenary(data) {
+    const units = [];
+    const fuelSummary = {};
+    (data.aaData || []).forEach(row => {
+      const fuel = parseFuelType(row[0]);
+      const name = (row[2] || '').trim();
+      const capacity = parseFloat((row[3] || '0').replace(/,/g, '').replace(/-/g, '0'));
+      const generation = parseFloat((row[4] || '0').replace(/,/g, ''));
+      const rate = (row[5] || '').replace(/%/g, '');
+      const note = (row[6] || '').trim();
+      if (name === '小計') {
+        const capMatch = (row[3] || '').match(/([\d,.]+)\(([\d.]+)%\)/);
+        const genMatch = (row[4] || '').match(/([\d,.]+)\(([\d.]+)%\)/);
+        fuelSummary[fuel] = {
+          capacity: capMatch ? parseFloat(capMatch[1].replace(/,/g, '')) : 0,
+          capPercent: capMatch ? parseFloat(capMatch[2]) : 0,
+          generation: genMatch ? parseFloat(genMatch[1].replace(/,/g, '')) : 0,
+          genPercent: genMatch ? parseFloat(genMatch[2]) : 0,
+        };
+        return;
+      }
+      if (!name) return;
+      units.push({ fuel, name, capacity, generation, rate: parseFloat(rate) || 0, note });
+    });
+    return { units, fuelSummary };
+  }
+
+  function parseFuelTypeCSV(text) {
+    const lines = text.trim().split('\n').filter(Boolean);
+    const labels = [];
+    const datasets = {};
+    const fuelOrder = ['LNG', 'Coal', 'IPP-LNG', 'IPP-Coal', 'Co-Gen', 'Fuel Oil', 'Solar', 'Wind', 'Hydro', 'ESS', 'Other RE'];
+    const csvFuelIndex = ['LNG', 'Coal', 'Fuel Oil', 'Co-Gen', 'IPP-LNG', 'IPP-Coal', 'Hydro', 'Wind', 'Solar', 'Pumped', 'Other RE', 'ESS Load'];
+    fuelOrder.forEach(f => { datasets[f] = []; });
+    lines.forEach((line, lineIdx) => {
+      const parts = line.split(',');
+      if (parts.length < 12) return;
+      labels.push(parts[0]);
+      csvFuelIndex.forEach((fuel, i) => {
+        const val = parseFloat(parts[i + 1]) || 0;
+        const target = CSV_FUEL_MERGE[fuel] || fuel;
+        if (datasets[target]) {
+          if (lineIdx < datasets[target].length) {
+            datasets[target][datasets[target].length - 1] += Math.max(0, val);
+          } else {
+            datasets[target].push(Math.max(0, val));
+          }
+        }
+      });
+    });
+    return { labels, datasets, fuelOrder: fuelOrder.filter(f => datasets[f] && datasets[f].some(v => v > 0)) };
+  }
+
+  function showLoading() {
+    const chartEl = document.querySelector('.chart-grid');
+    const curveEl = document.querySelector('.load-curve-section > div:last-child');
+    const unitEl = document.getElementById('unitTableBody');
+    if (chartEl && !chartEl.dataset.loaded) {
+      chartEl.innerHTML = '<div class="loading" style="grid-column:span 2"><div class="spinner"></div><p>Loading generation data...</p></div>';
+    }
+    if (curveEl && !curveEl.dataset.loaded) {
+      curveEl.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading load curve...</p></div>';
+    }
+    if (unitEl && !unitEl.dataset.loaded) {
+      unitEl.innerHTML = '<tr><td colspan="7"><div class="loading"><div class="spinner"></div><p>Loading unit data...</p></div></td></tr>';
+    }
+  }
+
+  function updateSummaryCards(loadData) {
+    document.getElementById('currentLoad').textContent = Math.round(loadData.currentLoad).toLocaleString();
+    document.getElementById('maxSupply').textContent = Math.round(loadData.maxSupply).toLocaleString();
+    document.getElementById('reserveRate').textContent = loadData.reserveRate.toFixed(1) + '%';
+    document.getElementById('reserveMW').textContent = Math.round(loadData.reserveMW).toLocaleString();
+    const status = getStatusInfo(loadData.reserveRate);
+    document.getElementById('reserveRate').style.color = status.color;
+    let ydayHtml = '';
+    if (loadData.ydayPeak > 0) {
+      const diff = Math.round(loadData.currentLoad - loadData.ydayPeak);
+      const sign = diff >= 0 ? '+' : '';
+      ydayHtml = ` <span style="font-size:12px;opacity:.7">(Yesterday peak ${loadData.ydayPeak.toLocaleString()}, ${sign}${diff.toLocaleString()})</span>`;
+    }
+    document.getElementById('statusBadgeContainer').innerHTML = `<span class="status-badge ${status.cls}">${status.label}</span>${ydayHtml}`;
+    document.getElementById('updateTime').textContent = loadData.updateTime ? 'Updated: ' + loadData.updateTime : '';
+  }
+
+  function renderGenChart(fuelSummary) {
+    const chartGrid = document.querySelector('.chart-grid');
+    if (chartGrid && !chartGrid.dataset.loaded) {
+      chartGrid.innerHTML = '<div class="chart-box"><canvas id="genChart"></canvas></div><div class="chart-box"><canvas id="capChart"></canvas></div>';
+      chartGrid.dataset.loaded = '1';
+    }
+    const ctx = document.getElementById('genChart').getContext('2d');
+    const entries = Object.entries(fuelSummary).filter(([, v]) => v.generation > 0).sort((a, b) => b[1].generation - a[1].generation);
+    const total = entries.reduce((s, [, v]) => s + v.generation, 0);
+    if (genChart) genChart.destroy();
+    genChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: { labels: entries.map(([k]) => FUEL_LABELS[k] || k), datasets: [{ data: entries.map(([, v]) => v.generation), backgroundColor: entries.map(([k]) => FUEL_COLORS[k] || '#999'), borderWidth: 2, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Generation Mix', font: { size: 16, weight: 'bold' } }, legend: { position: 'bottom', labels: { padding: 14, usePointStyle: true, pointStyle: 'circle', font: { size: 12 } } }, tooltip: { callbacks: { label: c => `${c.label}: ${c.parsed.toLocaleString()} MW (${((c.parsed / total) * 100).toFixed(1)}%)` } } } },
+    });
+  }
+
+  function renderCapChart(fuelSummary) {
+    const ctx = document.getElementById('capChart').getContext('2d');
+    const entries = Object.entries(fuelSummary).filter(([, v]) => v.capacity > 0).sort((a, b) => b[1].capacity - a[1].capacity);
+    const total = entries.reduce((s, [, v]) => s + v.capacity, 0);
+    if (capChart) capChart.destroy();
+    capChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: { labels: entries.map(([k]) => FUEL_LABELS[k] || k), datasets: [{ data: entries.map(([, v]) => v.capacity), backgroundColor: entries.map(([k]) => FUEL_COLORS[k] || '#999'), borderWidth: 2, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Installed Capacity', font: { size: 16, weight: 'bold' } }, legend: { position: 'bottom', labels: { padding: 14, usePointStyle: true, pointStyle: 'circle', font: { size: 12 } } }, tooltip: { callbacks: { label: c => `${c.label}: ${c.parsed.toLocaleString()} MW (${((c.parsed / total) * 100).toFixed(1)}%)` } } } },
+    });
+  }
+
+  function renderLoadCurve(fuelData) {
+    const curveContainer = document.querySelector('.load-curve-section > div:last-child');
+    if (curveContainer && !curveContainer.dataset.loaded) {
+      curveContainer.innerHTML = '<canvas id="loadCurveChart"></canvas>';
+      curveContainer.dataset.loaded = '1';
+    }
+    const ctx = document.getElementById('loadCurveChart').getContext('2d');
+    const { labels, datasets, fuelOrder } = fuelData;
+    const chartDatasets = fuelOrder.map(fuel => ({ label: FUEL_LABELS[fuel] || fuel, data: datasets[fuel] || [], backgroundColor: FUEL_COLORS[fuel] || '#999', borderColor: FUEL_COLORS[fuel] || '#999', borderWidth: 1, fill: true, pointRadius: 0 }));
+    if (loadCurveChart) loadCurveChart.destroy();
+    loadCurveChart = new Chart(ctx, {
+      type: 'line', data: { labels, datasets: chartDatasets },
+      options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { x: { ticks: { maxTicksLimit: 24, font: { size: 11 } }, grid: { display: false } }, y: { stacked: true, title: { display: true, text: 'MW', font: { size: 12 } }, ticks: { callback: v => v.toLocaleString(), font: { size: 11 } } } }, plugins: { title: { display: true, text: 'Generation by Fuel Type (Stacked)', font: { size: 16, weight: 'bold' } }, legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyle: 'circle', font: { size: 11 } } }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y.toLocaleString()} MW` } } } },
+    });
+  }
+
+  function renderFuelTabs(fuelSummary) {
+    const container = document.getElementById('fuelTabs');
+    const fuels = ['all', ...Object.keys(fuelSummary).filter(f => f !== 'ESS Load')];
+    container.innerHTML = fuels.map(f => {
+      const label = f === 'all' ? 'All' : (FUEL_LABELS[f] || f);
+      return `<button class="fuel-tab${f === activeFuel ? ' active' : ''}" data-fuel="${f}">${label}</button>`;
+    }).join('');
+  }
+
+  function bindFuelTabs() {
+    document.getElementById('fuelTabs').addEventListener('click', (e) => {
+      const btn = e.target.closest('.fuel-tab');
+      if (!btn) return;
+      activeFuel = btn.dataset.fuel;
+      document.querySelectorAll('.fuel-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderUnitTable();
+    });
+  }
+
+  function renderUnitTable() {
+    const tbody = document.getElementById('unitTableBody');
+    tbody.dataset.loaded = '1';
+    const filtered = activeFuel === 'all' ? allUnits : allUnits.filter(u => u.fuel === activeFuel);
+    tbody.innerHTML = filtered.map(u => {
+      const pct = u.capacity > 0 ? ((u.generation / u.capacity) * 100).toFixed(1) : '0.0';
+      const pctNum = parseFloat(pct);
+      const barColor = pctNum >= 80 ? '#22c55e' : pctNum >= 40 ? '#eab308' : pctNum > 0 ? '#f97316' : '#e2e8f0';
+      const status = getUnitStatus(u.note, u.generation, u.capacity);
+      return `<tr><td style="font-weight:600">${esc(u.name)}</td><td><span style="color:${FUEL_COLORS[u.fuel] || '#999'};font-weight:600">${esc(FUEL_LABELS[u.fuel] || u.fuel)}</span></td><td>${u.capacity > 0 ? u.capacity.toLocaleString() : '-'}</td><td style="font-weight:700">${u.generation.toLocaleString()}</td><td>${pct}%</td><td class="bar-cell"><div class="unit-bar"><div class="unit-bar-fill" style="width:${Math.min(pctNum, 100)}%;background:${barColor}"></div></div></td><td><span class="unit-status ${status.cls}">${esc(status.label)}</span></td></tr>`;
+    }).join('');
+  }
+
+  async function fetchAllData() {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 8000);
+      const res = await fetch(DATA_URL + '?t=' + Math.floor(Date.now() / 60000), { signal: controller.signal });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      const { loadpara: loadText, genary: genData, fueltype: fuelText } = json;
+
+      const loadData = parseLoadPara(loadText);
+      if (loadData) updateSummaryCards(loadData);
+      const { units, fuelSummary } = parseGenary(genData);
+      allUnits = units;
+      renderGenChart(fuelSummary);
+      renderCapChart(fuelSummary);
+      renderFuelTabs(fuelSummary);
+      renderUnitTable();
+      renderLoadCurve(parseFuelTypeCSV(fuelText));
+    } catch (err) {
+      console.error('Fetch error:', err);
+      document.getElementById('statusBadgeContainer').innerHTML = `<div class="error-msg"><h3>Failed to load data</h3><p>${esc(err.message)}</p><button class="retry-btn" onclick="location.reload()">Reload</button></div>`;
+    }
+  }
+
+  function applyTheme(dark) {
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    document.getElementById('themeToggle').textContent = dark ? '☀️' : '🌙';
+    localStorage.setItem('theme', dark ? 'dark' : 'light');
+  }
+
+  function init() {
+    const saved = localStorage.getItem('theme');
+    applyTheme(saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark');
+    });
+    document.querySelectorAll('.faq-item').forEach(item => {
+      item.querySelector('.faq-q').addEventListener('click', () => item.classList.toggle('open'));
+    });
+    bindFuelTabs();
+    showLoading();
+    fetchAllData();
+    setInterval(fetchAllData, 600000);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
+
+
+<script>document.querySelectorAll(".current-year").forEach(function (el) { el.textContent = new Date().getFullYear(); });</script>
+
+<footer class="open-source-attribution" style="padding:24px;text-align:center"><a href="https://upliftorch.com/">Upliftorch</a> · <a href="https://upliftorch.com/tools/power-grid/">Official demo / 線上工具</a></footer>
+</body>
+</html>

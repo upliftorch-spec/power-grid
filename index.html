@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="canonical" href="https://upliftorch.com/tools/power-grid/">
+<link rel="alternate" hreflang="zh-TW" href="https://upliftorch.com/tools/power-grid/">
+<link rel="alternate" hreflang="en" href="https://upliftorch.com/tools/power-grid/en/">
+<link rel="alternate" hreflang="x-default" href="https://upliftorch.com/tools/power-grid/en/">
+<title>台灣即時電力看板 | 台電供電、發電結構即時查詢</title>
+<meta name="description" content="台灣即時電力看板，提供台電供電能力、備轉容量率、各類燃料發電佔比、機組運轉狀態等即時數據，掌握全台用電與供電資訊。">
+<meta name="keywords" content="台電,即時用電,供電資訊,備轉容量,發電結構,綠能,再生能源,電力看板,各機組發電量,機組運轉狀態,燃氣發電,燃煤發電,太陽能發電,風力發電,水力發電,核能發電,抽蓄發電,大潭電廠,通霄電廠,興達電廠,台中電廠,林口電廠,大林電廠,民營電廠,IPP,麥寮電廠,和平電廠,離岸風電,備轉容量率,電力調度,淨發電量,裝置容量,鴨子曲線,友善降載,台電機組,即時發電,用電尖峰,供電餘裕,限電警戒">
+
+<meta property="og:title" content="台灣即時電力看板 | 供電資訊即時查詢">
+<meta property="og:description" content="台電供電能力、備轉容量率、各類燃料發電佔比、機組運轉狀態即時查詢。">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="zh_TW">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f0f4f8;--surface:#fff;--text:#1e293b;--text-secondary:#64748b;
+  --border:#e2e8f0;--primary:#3b82f6;--primary-dark:#2563eb;--primary-light:#dbeafe;
+  --header-bg:linear-gradient(135deg,#0f172a 0%,#1e3a5f 40%,#f59e0b 100%);
+  --green:#22c55e;--yellow:#eab308;--red:#ef4444;--orange:#f97316;
+  --radius:14px;--shadow:0 2px 16px rgba(0,0,0,.06);--shadow-lg:0 8px 32px rgba(0,0,0,.1);
+}
+[data-theme="dark"]{
+  --bg:#0f172a;--surface:#1e293b;--text:#e2e8f0;--text-secondary:#94a3b8;
+  --border:#334155;--primary:#60a5fa;--primary-dark:#93bbfd;--primary-light:rgba(59,130,246,.15);
+  --header-bg:linear-gradient(135deg,#020617 0%,#0f172a 40%,#92400e 100%);
+  --shadow:0 2px 16px rgba(0,0,0,.3);--shadow-lg:0 8px 32px rgba(0,0,0,.4);
+}
+html,body{overflow-x:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;background:var(--bg);color:var(--text);line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--primary);text-decoration:none}
+a:hover{text-decoration:underline}
+
+header{background:var(--header-bg);color:#fff;padding:24px 0;position:sticky;top:0;z-index:100;box-shadow:0 4px 24px rgba(0,0,0,.2)}
+.header-inner{max-width:1200px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-icon{width:42px;height:42px;background:rgba(255,255,255,.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;backdrop-filter:blur(8px)}
+.brand h1{font-size:21px;font-weight:700;letter-spacing:-.3px}
+.brand span{font-size:13px;opacity:.75;display:block;margin-top:2px}
+.header-actions{display:flex;align-items:center;gap:12px}
+.lang-switch{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);padding:7px 16px;border-radius:8px;font-size:13px;cursor:pointer;transition:all .2s;backdrop-filter:blur(8px)}
+.lang-switch:hover{background:rgba(255,255,255,.22)}
+.theme-toggle{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);width:38px;height:38px;border-radius:8px;font-size:18px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+.theme-toggle:hover{background:rgba(255,255,255,.22)}
+
+.container{max-width:1200px;margin:0 auto;padding:24px}
+.breadcrumb{font-size:13px;color:var(--text-secondary,#64748b);margin-bottom:20px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.breadcrumb a{color:var(--text-secondary,#64748b)}
+.breadcrumb a:hover{color:var(--primary,#ec4899)}
+.breadcrumb .sep{opacity:.5}
+.breadcrumb [aria-current]{color:var(--text,#1e293b);font-weight:600}
+
+.summary-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+.summary-card{background:var(--surface);border-radius:var(--radius);padding:20px 16px;text-align:center;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:transform .2s}
+.summary-card:hover{transform:translateY(-2px)}
+.summary-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.summary-card:nth-child(1)::before{background:var(--primary)}
+.summary-card:nth-child(2)::before{background:var(--green)}
+.summary-card:nth-child(3)::before{background:var(--yellow)}
+.summary-card:nth-child(4)::before{background:var(--orange)}
+.summary-card .icon{font-size:20px;margin-bottom:6px}
+.summary-card .num{font-size:30px;font-weight:800;letter-spacing:-.5px}
+.summary-card .label{font-size:12px;color:var(--text-secondary);margin-top:4px;font-weight:500}
+.summary-card .unit{font-size:14px;font-weight:400;opacity:.7}
+
+.status-badge{display:inline-block;padding:4px 14px;border-radius:20px;font-size:13px;font-weight:700;color:#fff;margin-top:6px}
+.status-green{background:#22c55e}
+.status-yellow{background:#eab308;color:#1e293b}
+.status-orange{background:#f97316}
+.status-red{background:#ef4444}
+
+.chart-section{background:var(--surface);border-radius:var(--radius);padding:28px;box-shadow:var(--shadow);margin-bottom:28px}
+.chart-section h2{font-size:20px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.chart-section .section-desc{color:var(--text-secondary);margin-bottom:20px;font-size:14px}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.chart-box{position:relative;min-height:300px}
+.chart-box canvas{max-height:350px}
+
+.unit-section{background:var(--surface);border-radius:var(--radius);padding:28px;box-shadow:var(--shadow);margin-bottom:28px}
+.unit-section h2{font-size:20px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.unit-section .section-desc{color:var(--text-secondary);margin-bottom:20px;font-size:14px}
+.fuel-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.fuel-tab{padding:8px 18px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:13px;font-weight:600;transition:all .2s;color:var(--text)}
+.fuel-tab:hover{border-color:var(--primary);color:var(--primary)}
+.fuel-tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.unit-table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;border-radius:var(--radius);overflow:hidden}
+.unit-table th{padding:12px 14px;text-align:left;background:#1e3a5f;color:#fff;font-weight:600;font-size:12px;white-space:nowrap}
+[data-theme="dark"] .unit-table th{background:#0f172a}
+.unit-table td{padding:10px 14px;border-bottom:1px solid var(--border)}
+.unit-table tr:last-child td{border-bottom:none}
+.unit-table tr:hover td{background:var(--bg)}
+.unit-table .bar-cell{width:30%}
+.unit-bar{height:8px;border-radius:4px;background:var(--border);overflow:hidden;min-width:60px}
+.unit-bar-fill{height:100%;border-radius:4px;transition:width .5s}
+.unit-status{font-size:11px;padding:3px 10px;border-radius:12px;font-weight:600;white-space:nowrap}
+.unit-status-normal{background:#dcfce7;color:#166534}
+.unit-status-repair{background:#fef3c7;color:#92400e}
+.unit-status-offline{background:#fee2e2;color:#991b1b}
+[data-theme="dark"] .unit-status-normal{background:rgba(34,197,94,.15);color:#86efac}
+[data-theme="dark"] .unit-status-repair{background:rgba(234,179,8,.15);color:#fde047}
+[data-theme="dark"] .unit-status-offline{background:rgba(239,68,68,.15);color:#fca5a5}
+
+.load-curve-section{background:var(--surface);border-radius:var(--radius);padding:28px;box-shadow:var(--shadow);margin-bottom:28px}
+.load-curve-section h2{font-size:20px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.load-curve-section .section-desc{color:var(--text-secondary);margin-bottom:20px;font-size:14px}
+
+.content-section{background:var(--surface);border-radius:var(--radius);padding:32px;box-shadow:var(--shadow);margin-bottom:36px}
+.content-section h2{font-size:22px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.content-section h2 .section-icon{font-size:24px}
+.content-section > .section-desc{color:var(--text-secondary);margin-bottom:20px;font-size:14px;line-height:1.8;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.content-section h3{font-size:17px;margin:24px 0 10px;color:var(--primary-dark)}
+.content-section p{color:var(--text-secondary);line-height:1.9;margin-bottom:14px}
+.content-section ul{color:var(--text-secondary);line-height:1.9;margin:0 0 14px 20px}
+.content-section li{margin-bottom:6px}
+
+.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:18px;margin-top:20px}
+.info-card{border:1px solid var(--border);border-radius:var(--radius);padding:24px;transition:all .2s;background:var(--surface)}
+.info-card:hover{box-shadow:var(--shadow-lg);border-color:var(--primary);transform:translateY(-2px)}
+.info-card-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.info-card-header .icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.info-card-header h3{margin:0;font-size:16px;color:var(--text)}
+.info-card-header .subtitle{font-size:12px;color:var(--text-secondary);font-weight:400;margin-top:2px}
+.info-card p{font-size:13px;color:var(--text-secondary);line-height:1.8;margin:0 0 10px}
+.info-card .stat{font-size:12px;padding:6px 12px;background:var(--bg);border-radius:8px;color:var(--text-secondary);display:inline-block}
+
+.faq{background:var(--surface);border-radius:var(--radius);padding:32px;box-shadow:var(--shadow);margin-bottom:36px}
+.faq h2{font-size:22px;margin-bottom:8px}
+.faq > p{color:var(--text-secondary);margin-bottom:20px;font-size:14px}
+.faq-item{border-bottom:1px solid var(--border);padding:18px 0}
+.faq-item:last-child{border-bottom:none}
+.faq-q{font-weight:700;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;transition:color .2s}
+.faq-q:hover{color:var(--primary)}
+.faq-q::after{content:"+";font-size:18px;transition:transform .3s;color:var(--primary);flex-shrink:0}
+.faq-item.open .faq-q::after{transform:rotate(45deg)}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .4s ease;color:var(--text-secondary);line-height:1.9}
+.faq-item.open .faq-a{max-height:600px;padding-top:12px}
+
+.ref-tag{font-size:10px;vertical-align:super;color:var(--primary);cursor:pointer;font-weight:700;text-decoration:none;margin-left:1px}
+.ref-tag:hover{text-decoration:underline}
+.ref-list{list-style:none;counter-reset:ref;padding:0}
+.ref-list li{counter-increment:ref;font-size:13px;color:var(--text-secondary);line-height:1.8;padding:8px 0;border-bottom:1px solid var(--border);display:flex;gap:8px}
+.ref-list li:last-child{border-bottom:none}
+.ref-list li::before{content:"[" counter(ref) "]";font-weight:700;color:var(--primary);flex-shrink:0;min-width:28px}
+.ref-list li a{color:var(--primary);word-break:break-all}
+
+.loading{text-align:center;padding:60px 20px}
+.loading .spinner{width:48px;height:48px;border:4px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-msg{text-align:center;padding:40px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow)}
+.error-msg h3{color:#ef4444;margin-bottom:8px}
+.retry-btn{margin-top:12px;padding:10px 24px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px}
+
+footer{background:linear-gradient(135deg,#0f172a,#1e293b);color:#94a3b8;padding:40px 20px;text-align:center;font-size:13px;line-height:2.2}
+footer a{color:#93c5fd}
+footer .tools{margin-bottom:16px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+footer .tools a{background:rgba(255,255,255,.06);padding:4px 14px;border-radius:6px;transition:background .2s}
+footer .tools a:hover{background:rgba(255,255,255,.12);text-decoration:none}
+
+@media(max-width:768px){
+  .summary-bar{grid-template-columns:repeat(2,1fr)}
+  .chart-grid{grid-template-columns:1fr}
+  .info-grid{grid-template-columns:1fr}
+  .container{padding:16px}
+  .chart-section,.unit-section,.load-curve-section{padding:20px}
+}
+@media(max-width:600px){
+  .brand h1{font-size:17px}
+  .header-inner{gap:8px}
+  .summary-bar{grid-template-columns:1fr 1fr}
+  .fuel-tabs{gap:4px}
+  .fuel-tab{padding:6px 12px;font-size:12px}
+}
+</style>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"首頁","item":"https://upliftorch.com/"},{"@type":"ListItem","position":2,"name":"免費線上工具","item":"https://upliftorch.com/tools"},{"@type":"ListItem","position":3,"name":"即時電力看板","item":"https://upliftorch.com/tools/power-grid/"}]}
+</script>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="#fbbf24" stroke="#fff" stroke-width="1" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <h1>台灣即時電力看板</h1>
+        <span id="updateTime">資料載入中...</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="theme-toggle" id="themeToggle" aria-label="切換深色模式">🌙</button>
+      <a href="https://upliftorch.com/tools/power-grid/en/" class="lang-switch">EN</a>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <nav class="breadcrumb" aria-label="麵包屑導覽">
+    <a href="https://upliftorch.com/">首頁</a>
+    <span class="sep">›</span>
+    <a href="https://upliftorch.com/tools">免費線上工具</a>
+    <span class="sep">›</span>
+    <span aria-current="page">即時電力看板</span>
+  </nav>
+
+  <div class="summary-bar" id="summaryBar">
+    <div class="summary-card"><div class="icon">⚡</div><div class="num" id="currentLoad">--</div><div class="label">目前用電量 <span class="unit">MW</span></div></div>
+    <div class="summary-card"><div class="icon">🏭</div><div class="num" id="maxSupply">--</div><div class="label">最大供電能力 <span class="unit">MW</span></div></div>
+    <div class="summary-card"><div class="icon">📊</div><div class="num" id="reserveRate">--</div><div class="label">備轉容量率</div></div>
+    <div class="summary-card"><div class="icon">🔋</div><div class="num" id="reserveMW">--</div><div class="label">備轉容量 <span class="unit">MW</span></div></div>
+  </div>
+  <div style="text-align:center;margin:-18px 0 24px" id="statusBadgeContainer"></div>
+
+  <div class="chart-section">
+    <h2><span class="section-icon">📊</span>發電結構分析</h2>
+    <p class="section-desc">各類燃料即時發電佔比與裝置容量佔比，資料每 10 分鐘自台電更新。</p>
+    <div class="chart-grid">
+      <div class="chart-box"><canvas id="genChart"></canvas></div>
+      <div class="chart-box"><canvas id="capChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="load-curve-section">
+    <h2><span class="section-icon">📈</span>今日用電曲線</h2>
+    <p class="section-desc">今日各時段用電負載變化，依燃料類型堆疊顯示。</p>
+    <div style="position:relative;min-height:350px"><canvas id="loadCurveChart"></canvas></div>
+  </div>
+
+  <div class="unit-section">
+    <h2><span class="section-icon">🏭</span>各機組即時運轉狀態</h2>
+    <p class="section-desc">顯示各發電機組的裝置容量、即時淨發電量及運轉狀態，點擊分類標籤篩選。</p>
+    <div class="fuel-tabs" id="fuelTabs"></div>
+    <div style="overflow-x:auto">
+      <table class="unit-table" id="unitTable">
+        <thead><tr><th>機組</th><th>燃料類型</th><th>裝置容量 (MW)</th><th>淨發電量 (MW)</th><th>發電率</th><th class="bar-cell">負載</th><th>狀態</th></tr></thead>
+        <tbody id="unitTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <section class="content-section">
+    <h2><span class="section-icon">🔌</span>台灣電力結構完整解析</h2>
+    <p class="section-desc">台灣是獨立電網（非與他國互聯），所有用電必須即時在島內發電滿足，這使備轉容量管理格外關鍵。了解各類發電方式的特性，有助於理解台灣的能源轉型挑戰與現況。</p>
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="info-card-header">
+          <div class="icon" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8)">🔥</div>
+          <div><h3>燃氣發電（LNG）</h3><div class="subtitle">Liquefied Natural Gas</div></div>
+        </div>
+        <p>目前台灣發電主力，佔總發電量約 40%。使用複循環氣渦輪機（CCGT），熱效率可達 60% 以上，碳排為燃煤的一半。台電六大燃氣電廠（大潭、通霄、興達、南部、台中、大林）為基載與中載主力。</p>
+        <div class="stat">碳排係數：約 0.37 kgCO2/kWh</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-header">
+          <div class="icon" style="background:linear-gradient(135deg,#6b7280,#374151)">🏭</div>
+          <div><h3>燃煤發電（Coal）</h3><div class="subtitle">Coal-Fired Power</div></div>
+        </div>
+        <p>傳統基載電力來源，碳排與空污較高。台中火力、林口、興達等電廠為主。近年配合減碳政策逐步降載，秋冬空品不良時啟動「友善降載減排」機制。政府目標 2030 年將燃煤佔比降至 20% 以下。</p>
+        <div class="stat">碳排係數：約 0.84 kgCO2/kWh</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-header">
+          <div class="icon" style="background:linear-gradient(135deg,#22c55e,#15803d)">☀️</div>
+          <div><h3>太陽能（Solar）</h3><div class="subtitle">Solar Photovoltaic</div></div>
+        </div>
+        <p>裝置容量已突破 14 GW，為再生能源之首。主要集中在中南部（彰化以南），夏季午間尖峰可貢獻超過 10 GW。缺點是夜間無法發電、雨天效率低，需搭配儲能系統調度。</p>
+        <div class="stat">2025 目標：20 GW 裝置容量</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-header">
+          <div class="icon" style="background:linear-gradient(135deg,#06b6d4,#0e7490)">💨</div>
+          <div><h3>風力發電（Wind）</h3><div class="subtitle">Wind Power</div></div>
+        </div>
+        <p>陸域風電加上離岸風電，裝置容量持續成長。台灣海峽為全球最佳離岸風場之一，冬季東北季風期間發電效率最高。離岸風電目標 2025 年達 5.7 GW、2030 年達 13.1 GW。</p>
+        <div class="stat">容量因數：陸域 25-30% ｜ 離岸 40-50%</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-header">
+          <div class="icon" style="background:linear-gradient(135deg,#3b82f6,#1e40af)">💧</div>
+          <div><h3>水力發電（Hydro）</h3><div class="subtitle">Hydroelectric Power</div></div>
+        </div>
+        <p>包含慣常水力（如德基、曾文、翡翠等水庫）與抽蓄水力（大觀二廠、明潭）。抽蓄水力是目前最大規模的儲能方式，離峰抽水、尖峰放水發電，在電力調度中扮演關鍵角色。</p>
+        <div class="stat">抽蓄容量：約 2.6 GW（調度利器）</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-header">
+          <div class="icon" style="background:linear-gradient(135deg,#a855f7,#7c3aed)">🔋</div>
+          <div><h3>儲能系統（ESS）</h3><div class="subtitle">Energy Storage System</div></div>
+        </div>
+        <p>電池儲能系統（BESS）快速成長中，用於頻率調節、尖離峰移轉及再生能源整合。台電目標 2025 年建置 1 GW 以上儲能容量。儲能可在毫秒級響應電網頻率變化，維持供電穩定。</p>
+        <div class="stat">響應速度：毫秒級 ｜ 效率 85-95%</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content-section">
+    <h2><span class="section-icon">🚦</span>供電燈號說明</h2>
+    <p class="section-desc">台電依備轉容量率劃分四級供電燈號，反映當日供電裕度與限電風險。備轉容量 = 最大供電能力 - 預估尖峰負載，備轉容量率 = 備轉容量 / 預估尖峰負載 × 100%。</p>
+    <div class="info-grid">
+      <div class="info-card" style="border-left:4px solid #22c55e">
+        <h3 style="color:#22c55e;margin:0 0 8px">🟢 供電充裕（≥ 10%）</h3>
+        <p>備轉容量率 10% 以上，供電充足無虞。此為理想運轉狀態，可應付突發機組跳機或負載驟增。</p>
+      </div>
+      <div class="info-card" style="border-left:4px solid #eab308">
+        <h3 style="color:#eab308;margin:0 0 8px">🟡 供電吃緊（6% ~ 10%）</h3>
+        <p>備轉容量偏低但仍足以因應一般突發狀況。台電將啟動需量反應（減少用電大戶負載）等措施。</p>
+      </div>
+      <div class="info-card" style="border-left:4px solid #f97316">
+        <h3 style="color:#f97316;margin:0 0 8px">🟠 供電警戒（≤ 6%）</h3>
+        <p>系統供電餘裕不足，若再有大型機組故障恐有限電風險。台電將啟動緊急發電機組並呼籲節電。</p>
+      </div>
+      <div class="info-card" style="border-left:4px solid #ef4444">
+        <h3 style="color:#ef4444;margin:0 0 8px">🔴 限電警戒（≤ 50 萬瓩）</h3>
+        <p>備轉容量低於 90 萬瓩時為限電警戒，低於 50 萬瓩時可能啟動分區輪流限電。此為最嚴重警示。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="faq" id="faq">
+    <h2>常見問題 FAQ</h2>
+    <p>以下整理民眾最常詢問的台灣電力相關問題。</p>
+    <div class="faq-item"><div class="faq-q">什麼是備轉容量率？為什麼重要？</div><div class="faq-a">備轉容量率 =（最大供電能力 - 預估尖峰負載）÷ 預估尖峰負載 × 100%。它反映電力系統的安全餘裕 — 備轉越高，表示即使有機組臨時故障或負載突然增加，仍有足夠的發電能力應對。國際上一般認為備轉容量率應維持在 15% 以上為佳，但台灣近年夏季經常在 6-10% 區間，屬「吃緊」水準。</div></div>
+    <div class="faq-item"><div class="faq-q">為什麼夏天比較容易缺電？</div><div class="faq-a">夏季高溫（6-9 月）冷氣用電大幅增加，全台用電尖峰可達 4,000 萬瓩以上。同時部分機組需要排定歲修（利用春秋低負載期維修，但若延遲至夏季則影響供電）。加上太陽能在傍晚後急速下降（鴨子曲線效應），17-19 時經常出現淨負載最高峰。三者疊加使夏季供電最為緊繃。</div></div>
+    <div class="faq-item"><div class="faq-q">台灣的電從哪裡來？各佔多少？</div><div class="faq-a">2024 年台灣發電結構約為：燃氣 42%、燃煤 32%、再生能源 12%（太陽能為主）、核能 6%、水力 4%、其他 4%。政府能源轉型目標為 2025 年「燃氣 50%、燃煤 30%、再生能源 20%」。隨著核電廠陸續除役，缺口主要由燃氣與再生能源填補。</div></div>
+    <div class="faq-item"><div class="faq-q">什麼是「鴨子曲線」？對台灣有什麼影響？</div><div class="faq-a">鴨子曲線（Duck Curve）是指當太陽能大量併網後，白天淨負載（總負載減去太陽能發電）大幅下降，傍晚太陽下山後淨負載急速攀升的曲線形狀，像一隻鴨子。這對台灣的影響是：午間可能需要減少火力機組出力（降載困難），傍晚卻需要在短時間內快速爬升大量機組，對電力調度造成極大挑戰。儲能系統是解決鴨子曲線的關鍵。</div></div>
+    <div class="faq-item"><div class="faq-q">民營電廠（IPP）佔台灣發電多少？</div><div class="faq-a">台灣約有 20% 以上的電力來自民營電廠（IPP, Independent Power Producer），包含燃氣 IPP（如海湖、新桃、國光、星彰、嘉惠、豐德等）與燃煤 IPP（如麥寮、和平）。IPP 與台電簽訂購售電合約（PPA），發電後售予台電供全國電網調度。此外，汽電共生業者也是重要電力來源之一。</div></div>
+    <div class="faq-item"><div class="faq-q">這個網站的資料來源與更新頻率？</div><div class="faq-a">本站資料 100% 來自台灣電力公司開放資料（taipower.com.tw），包含即時供電資訊（loadpara）、各機組發電量（genary）及各燃料別時序資料（loadfueltype）。資料由台電每 10 分鐘更新一次，本站同步抓取。所有數值來自台電能源管理系統（EMS），因系統維護或傳輸延遲，可能與實際值略有差異。</div></div>
+    <div class="faq-item"><div class="faq-q">什麼是「友善降載減排」？</div><div class="faq-a">當空氣品質不良（如 AQI 達橘色以上預警），台電會主動降低燃煤機組的發電出力，以減少 SOx、NOx、PM2.5 排放，稱為「友善降載減排」。降載幅度通常為裝置容量的 20-40%。雖會暫時降低供電能力，但可有效改善區域空品。近年台中電廠因此措施而大幅減少排放量。</div></div>
+    <div class="faq-item"><div class="faq-q">台灣為什麼需要能源轉型？</div><div class="faq-a">三大驅動力：（1）減碳承諾 — 台灣目標 2050 年淨零排放，電力部門佔全台碳排約 60%，是減碳主力；（2）核電廠除役 — 三座核電廠六部機組陸續除役，需要替代電源；（3）空污改善 — 燃煤電廠是空污重要來源，社會壓力促使減煤。轉型路徑為增加再生能源（太陽能+風力）搭配燃氣作為過渡、發展儲能與智慧電網。</div></div>
+  </section>
+
+  <section class="content-section" id="references">
+    <h2><span class="section-icon">📖</span>參考資料</h2>
+    <ol class="ref-list">
+      <li>台灣電力公司（2026）— 即時供電資訊。<a href="https://www.taipower.com.tw/tc/page.aspx?mid=206" target="_blank" rel="noopener">taipower.com.tw</a></li>
+      <li>經濟部能源署（2025）— 能源統計月報：台灣電力結構。<a href="https://www.moeaea.gov.tw/" target="_blank" rel="noopener">moeaea.gov.tw</a></li>
+      <li>台灣電力公司（2026）— 各機組發電量即時資訊。<a href="https://www.taipower.com.tw/2289/2544/2547/2549/17371/normalPost" target="_blank" rel="noopener">taipower.com.tw</a></li>
+      <li>政府資料開放平臺 — 台灣電力公司開放資料集。<a href="https://data.gov.tw/" target="_blank" rel="noopener">data.gov.tw</a></li>
+      <li>International Energy Agency (2024) — Taiwan Energy Policy Review. <a href="https://www.iea.org/" target="_blank" rel="noopener">iea.org</a></li>
+    </ol>
+  </section>
+
+</div>
+
+<footer>
+  <div class="tools">
+    <a href="https://upliftorch.com/tools/air-quality/">空氣品質</a>
+    <a href="https://upliftorch.com/tools/food-safety/">食在安心</a>
+    <a href="https://upliftorch.com/tools/convert-to-webp/">圖片轉 WebP</a>
+    <a href="https://upliftorch.com/tools/mp3-cutter/">MP3 剪輯</a>
+    <a href="https://upliftorch.com/tools/create-ico/">ICO 產生器</a>
+    <a href="https://upliftorch.com/tools/url-codec/">URL 編碼</a>
+  </div>
+  <div>資料來源：<a href="https://www.taipower.com.tw/tc/page.aspx?mid=206" target="_blank" rel="noopener">台灣電力公司</a>（開放資料）</div>
+  <div>&copy; <script>document.write(new Date().getFullYear())</script> Upliftorch. All rights reserved.</div>
+</footer>
+
+<script>
+(() => {
+  'use strict';
+
+  const DATA_URL = 'https://storage.googleapis.com/upliftorch_tool/power-grid/data/power-grid-data.json';
+
+  const FUEL_COLORS = {
+    'LNG': '#3b82f6',
+    'Coal': '#6b7280',
+    'IPP-LNG': '#60a5fa',
+    'IPP-Coal': '#9ca3af',
+    'Co-Gen': '#f97316',
+    'Fuel Oil': '#a855f7',
+    'Solar': '#eab308',
+    'Wind': '#06b6d4',
+    'Hydro': '#22c55e',
+    'ESS': '#8b5cf6',
+    'Other RE': '#10b981',
+    'Pumped': '#14b8a6',
+    'ESS Load': '#ef4444',
+  };
+
+  const FUEL_LABELS = {
+    'LNG': '燃氣',
+    'Coal': '燃煤',
+    'IPP-LNG': '民營燃氣',
+    'IPP-Coal': '民營燃煤',
+    'Co-Gen': '汽電共生',
+    'Fuel Oil': '燃油',
+    'Solar': '太陽能',
+    'Wind': '風力',
+    'Hydro': '水力',
+    'ESS': '儲能',
+    'Other RE': '其他再生',
+    'Pumped': '抽蓄',
+    'ESS Load': '儲能負載',
+  };
+
+  const FUEL_MAP = {
+    '燃氣(LNG)': 'LNG',
+    '民營電廠-燃氣(IPP-LNG)': 'IPP-LNG',
+    '燃煤(Coal)': 'Coal',
+    '民營電廠-燃煤(IPP-Coal)': 'IPP-Coal',
+    '汽電共生(Co-Gen)': 'Co-Gen',
+    '燃料油(Fuel Oil)': 'Fuel Oil',
+    '太陽能(Solar)': 'Solar',
+    '風力(Wind)': 'Wind',
+    '水力(Hydro)': 'Hydro',
+    '儲能(Energy Storage System)': 'ESS',
+    '其它再生能源(Other Renewable Energy)': 'Other RE',
+    '抽蓄發電(Pumped Storage)': 'Pumped',
+    '儲能負載(Energy Storage System Load)': 'ESS Load',
+  };
+
+  // #5: Pumped 併入 Hydro 顯示，ESS Load 不計入堆疊
+  const CSV_FUEL_MERGE = { 'Pumped': 'Hydro' };
+
+  let genChart = null, capChart = null, loadCurveChart = null;
+  let allUnits = [];
+  let activeFuel = 'all';
+  let fuelTabsBound = false; // #1: 避免重複綁定事件
+
+  // #6: HTML 轉義
+  function esc(str) {
+    const el = document.createElement('span');
+    el.textContent = str;
+    return el.innerHTML;
+  }
+
+  function parseFuelType(raw) {
+    if (!raw) return 'Other';
+    const cleaned = raw.replace(/<[^>]*>/g, '').trim();
+    return FUEL_MAP[cleaned] || 'Other';
+  }
+
+  function getStatusInfo(rateNum) {
+    if (rateNum >= 10) return { label: '供電充裕', cls: 'status-green', color: '#22c55e' };
+    if (rateNum >= 6) return { label: '供電吃緊', cls: 'status-yellow', color: '#eab308' };
+    if (rateNum >= 3) return { label: '供電警戒', cls: 'status-orange', color: '#f97316' };
+    return { label: '限電警戒', cls: 'status-red', color: '#ef4444' };
+  }
+
+  // #2: 機組狀態判斷（else-if 鏈，按具體到一般排列）
+  function getUnitStatus(note, generation, capacity) {
+    if (note.includes('試俥') || note.includes('新機組')) return { cls: 'unit-status-repair', label: note };
+    if (note.includes('部分故障')) return { cls: 'unit-status-repair', label: note };
+    if (note.includes('部分檢修')) return { cls: 'unit-status-repair', label: note };
+    if (note.includes('歲修')) return { cls: 'unit-status-offline', label: note };
+    if (note.includes('環保停機')) return { cls: 'unit-status-offline', label: note };
+    if (note.includes('檢修')) return { cls: generation <= 0 ? 'unit-status-offline' : 'unit-status-repair', label: note };
+    if (note.includes('停機')) return { cls: 'unit-status-offline', label: note };
+    if (note.includes('故障')) return { cls: 'unit-status-repair', label: note };
+    if (note.includes('友善降載')) return { cls: 'unit-status-repair', label: note };
+    if (note.includes('配合綠電')) return { cls: 'unit-status-repair', label: note };
+    if (generation <= 0 && capacity > 0) return { cls: 'unit-status-offline', label: note || '未發電' };
+    return { cls: 'unit-status-normal', label: '運轉中' };
+  }
+
+  function parseLoadPara(text) {
+    const loadMatch = text.match(/loadInfo\s*=\s*\[([\s\S]*?)\]/);
+    const ydayMatch = text.match(/loadInfoYday\s*=\s*\[([\s\S]*?)\]/);
+    if (!loadMatch) return null;
+
+    const parseLine = l => l.replace(/"/g, '').replace(/,\s*$/, '').trim();
+    const lines = loadMatch[1].split('\n').map(parseLine).filter(Boolean);
+    const result = {
+      currentLoad: parseFloat(lines[0]?.replace(/,/g, '')) || 0,
+      maxSupply: parseFloat(lines[1]?.replace(/,/g, '')) || 0,
+      peakCapacity: parseFloat(lines[2]?.replace(/,/g, '')) || 0,
+      updateTime: lines[3] || '',
+    };
+    result.reserveMW = result.maxSupply - result.currentLoad;
+    result.reserveRate = result.currentLoad > 0 ? ((result.reserveMW / result.currentLoad) * 100) : 0;
+
+    // #7: 解析昨日資料，用於摘要卡片對比
+    if (ydayMatch) {
+      const yLines = ydayMatch[1].split('\n').map(parseLine).filter(Boolean);
+      result.ydayPeak = parseFloat(yLines[0]?.replace(/,/g, '')) || 0;
+    }
+
+    return result;
+  }
+
+  function parseGenary(data) {
+    const units = [];
+    const fuelSummary = {};
+
+    (data.aaData || []).forEach(row => {
+      const fuel = parseFuelType(row[0]);
+      const name = (row[2] || '').trim();
+      const capacity = parseFloat((row[3] || '0').replace(/,/g, '').replace(/-/g, '0'));
+      const generation = parseFloat((row[4] || '0').replace(/,/g, ''));
+      const rate = (row[5] || '').replace(/%/g, '');
+      const note = (row[6] || '').trim();
+
+      if (name === '小計') {
+        const capMatch = (row[3] || '').match(/([\d,.]+)\(([\d.]+)%\)/);
+        const genMatch = (row[4] || '').match(/([\d,.]+)\(([\d.]+)%\)/);
+        fuelSummary[fuel] = {
+          capacity: capMatch ? parseFloat(capMatch[1].replace(/,/g, '')) : 0,
+          capPercent: capMatch ? parseFloat(capMatch[2]) : 0,
+          generation: genMatch ? parseFloat(genMatch[1].replace(/,/g, '')) : 0,
+          genPercent: genMatch ? parseFloat(genMatch[2]) : 0,
+        };
+        return;
+      }
+
+      if (!name) return;
+
+      units.push({ fuel, name, capacity, generation, rate: parseFloat(rate) || 0, note });
+    });
+
+    return { units, fuelSummary, updateTime: data[''] || '' };
+  }
+
+  function parseFuelTypeCSV(text) {
+    const lines = text.trim().split('\n').filter(Boolean);
+    const labels = [];
+    const datasets = {};
+    const fuelOrder = ['LNG', 'Coal', 'IPP-LNG', 'IPP-Coal', 'Co-Gen', 'Fuel Oil', 'Solar', 'Wind', 'Hydro', 'ESS', 'Other RE'];
+    const csvFuelIndex = ['LNG', 'Coal', 'Fuel Oil', 'Co-Gen', 'IPP-LNG', 'IPP-Coal', 'Hydro', 'Wind', 'Solar', 'Pumped', 'Other RE', 'ESS Load'];
+
+    fuelOrder.forEach(f => { datasets[f] = []; });
+
+    lines.forEach((line, lineIdx) => {
+      const parts = line.split(',');
+      if (parts.length < 12) return;
+      labels.push(parts[0]);
+      csvFuelIndex.forEach((fuel, i) => {
+        const val = parseFloat(parts[i + 1]) || 0;
+        // #5: Pumped 併入 Hydro，ESS Load 忽略（負值無意義於堆疊）
+        const target = CSV_FUEL_MERGE[fuel] || fuel;
+        if (datasets[target]) {
+          if (lineIdx < datasets[target].length) {
+            datasets[target][datasets[target].length - 1] += Math.max(0, val);
+          } else {
+            datasets[target].push(Math.max(0, val));
+          }
+        }
+      });
+    });
+
+    return { labels, datasets, fuelOrder: fuelOrder.filter(f => datasets[f] && datasets[f].some(v => v > 0)) };
+  }
+
+  // #8: loading 狀態管理
+  function showLoading() {
+    const chartEl = document.querySelector('.chart-grid');
+    const curveEl = document.querySelector('.load-curve-section > div:last-child');
+    const unitEl = document.getElementById('unitTableBody');
+    if (chartEl && !chartEl.dataset.loaded) {
+      chartEl.innerHTML = '<div class="loading" style="grid-column:span 2"><div class="spinner"></div><p>正在載入發電資料…</p></div>';
+    }
+    if (curveEl && !curveEl.dataset.loaded) {
+      curveEl.innerHTML = '<div class="loading"><div class="spinner"></div><p>正在載入用電曲線…</p></div>';
+    }
+    if (unitEl && !unitEl.dataset.loaded) {
+      unitEl.innerHTML = '<tr><td colspan="7"><div class="loading"><div class="spinner"></div><p>正在載入機組資料…</p></div></td></tr>';
+    }
+  }
+
+  function updateSummaryCards(loadData) {
+    document.getElementById('currentLoad').textContent = Math.round(loadData.currentLoad).toLocaleString();
+    document.getElementById('maxSupply').textContent = Math.round(loadData.maxSupply).toLocaleString();
+    document.getElementById('reserveRate').textContent = loadData.reserveRate.toFixed(1) + '%';
+    document.getElementById('reserveMW').textContent = Math.round(loadData.reserveMW).toLocaleString();
+
+    const status = getStatusInfo(loadData.reserveRate);
+    document.getElementById('reserveRate').style.color = status.color;
+
+    // #7: 顯示與昨日尖峰對比
+    let ydayHtml = '';
+    if (loadData.ydayPeak > 0) {
+      const diff = Math.round(loadData.currentLoad - loadData.ydayPeak);
+      const sign = diff >= 0 ? '+' : '';
+      ydayHtml = ` <span style="font-size:12px;opacity:.7">（昨日尖峰 ${loadData.ydayPeak.toLocaleString()}，${sign}${diff.toLocaleString()}）</span>`;
+    }
+
+    document.getElementById('statusBadgeContainer').innerHTML =
+      `<span class="status-badge ${status.cls}">${status.label}</span>${ydayHtml}`;
+
+    const rocTime = loadData.updateTime;
+    document.getElementById('updateTime').textContent = rocTime ? '更新：' + rocTime : '';
+  }
+
+  function renderGenChart(fuelSummary) {
+    const chartGrid = document.querySelector('.chart-grid');
+    if (chartGrid && !chartGrid.dataset.loaded) {
+      chartGrid.innerHTML = '<div class="chart-box"><canvas id="genChart"></canvas></div><div class="chart-box"><canvas id="capChart"></canvas></div>';
+      chartGrid.dataset.loaded = '1';
+    }
+    const ctx = document.getElementById('genChart').getContext('2d');
+    const entries = Object.entries(fuelSummary).filter(([, v]) => v.generation > 0);
+    entries.sort((a, b) => b[1].generation - a[1].generation);
+
+    const labels = entries.map(([k]) => FUEL_LABELS[k] || k);
+    const values = entries.map(([, v]) => v.generation);
+    const colors = entries.map(([k]) => FUEL_COLORS[k] || '#999');
+    const total = values.reduce((a, b) => a + b, 0);
+
+    if (genChart) genChart.destroy();
+    genChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          backgroundColor: colors,
+          borderWidth: 2,
+          borderColor: getComputedStyle(document.documentElement).getPropertyValue('--surface').trim(),
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          title: { display: true, text: '即時發電佔比', font: { size: 16, weight: 'bold' } },
+          legend: { position: 'bottom', labels: { padding: 14, usePointStyle: true, pointStyle: 'circle', font: { size: 12 } } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const pct = ((ctx.parsed / total) * 100).toFixed(1);
+                return `${ctx.label}: ${ctx.parsed.toLocaleString()} MW (${pct}%)`;
+              }
+            }
+          }
+        },
+      },
+    });
+  }
+
+  function renderCapChart(fuelSummary) {
+    const ctx = document.getElementById('capChart').getContext('2d');
+    const entries = Object.entries(fuelSummary).filter(([, v]) => v.capacity > 0);
+    entries.sort((a, b) => b[1].capacity - a[1].capacity);
+
+    const labels = entries.map(([k]) => FUEL_LABELS[k] || k);
+    const values = entries.map(([, v]) => v.capacity);
+    const colors = entries.map(([k]) => FUEL_COLORS[k] || '#999');
+    const total = values.reduce((a, b) => a + b, 0);
+
+    if (capChart) capChart.destroy();
+    capChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          backgroundColor: colors,
+          borderWidth: 2,
+          borderColor: getComputedStyle(document.documentElement).getPropertyValue('--surface').trim(),
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          title: { display: true, text: '裝置容量佔比', font: { size: 16, weight: 'bold' } },
+          legend: { position: 'bottom', labels: { padding: 14, usePointStyle: true, pointStyle: 'circle', font: { size: 12 } } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const pct = ((ctx.parsed / total) * 100).toFixed(1);
+                return `${ctx.label}: ${ctx.parsed.toLocaleString()} MW (${pct}%)`;
+              }
+            }
+          }
+        },
+      },
+    });
+  }
+
+  function renderLoadCurve(fuelData) {
+    const curveContainer = document.querySelector('.load-curve-section > div:last-child');
+    if (curveContainer && !curveContainer.dataset.loaded) {
+      curveContainer.innerHTML = '<canvas id="loadCurveChart"></canvas>';
+      curveContainer.dataset.loaded = '1';
+    }
+    const ctx = document.getElementById('loadCurveChart').getContext('2d');
+    const { labels, datasets, fuelOrder } = fuelData;
+
+    const chartDatasets = fuelOrder.map(fuel => ({
+      label: FUEL_LABELS[fuel] || fuel,
+      data: datasets[fuel] || [],
+      backgroundColor: FUEL_COLORS[fuel] || '#999',
+      borderColor: FUEL_COLORS[fuel] || '#999',
+      borderWidth: 1,
+      fill: true,
+      pointRadius: 0,
+    }));
+
+    if (loadCurveChart) loadCurveChart.destroy();
+    loadCurveChart = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets: chartDatasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          x: {
+            ticks: { maxTicksLimit: 24, font: { size: 11 } },
+            grid: { display: false },
+          },
+          y: {
+            stacked: true,
+            title: { display: true, text: 'MW', font: { size: 12 } },
+            ticks: { callback: v => v.toLocaleString(), font: { size: 11 } },
+          },
+        },
+        plugins: {
+          title: { display: true, text: '今日各時段發電量（依燃料類型堆疊）', font: { size: 16, weight: 'bold' } },
+          legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyle: 'circle', font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()} MW`,
+            }
+          }
+        },
+      },
+    });
+  }
+
+  // #1: renderFuelTabs 只更新 innerHTML，事件綁定拆到 init
+  function renderFuelTabs(fuelSummary) {
+    const container = document.getElementById('fuelTabs');
+    const fuels = ['all', ...Object.keys(fuelSummary).filter(f => f !== 'ESS Load')];
+
+    container.innerHTML = fuels.map(f => {
+      const label = f === 'all' ? '全部' : (FUEL_LABELS[f] || f);
+      const cls = f === activeFuel ? 'fuel-tab active' : 'fuel-tab';
+      return `<button class="${cls}" data-fuel="${f}">${label}</button>`;
+    }).join('');
+  }
+
+  function bindFuelTabs() {
+    document.getElementById('fuelTabs').addEventListener('click', (e) => {
+      const btn = e.target.closest('.fuel-tab');
+      if (!btn) return;
+      activeFuel = btn.dataset.fuel;
+      document.querySelectorAll('.fuel-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderUnitTable();
+    });
+  }
+
+  // #2 + #6: 使用 getUnitStatus + esc 轉義
+  function renderUnitTable() {
+    const tbody = document.getElementById('unitTableBody');
+    tbody.dataset.loaded = '1';
+    const filtered = activeFuel === 'all' ? allUnits : allUnits.filter(u => u.fuel === activeFuel);
+
+    tbody.innerHTML = filtered.map(u => {
+      const pct = u.capacity > 0 ? ((u.generation / u.capacity) * 100).toFixed(1) : '0.0';
+      const pctNum = parseFloat(pct);
+      const barColor = pctNum >= 80 ? '#22c55e' : pctNum >= 40 ? '#eab308' : pctNum > 0 ? '#f97316' : '#e2e8f0';
+      const status = getUnitStatus(u.note, u.generation, u.capacity);
+      const fuelLabel = FUEL_LABELS[u.fuel] || u.fuel;
+
+      return `<tr>
+        <td style="font-weight:600">${esc(u.name)}</td>
+        <td><span style="color:${FUEL_COLORS[u.fuel] || '#999'};font-weight:600">${esc(fuelLabel)}</span></td>
+        <td>${u.capacity > 0 ? u.capacity.toLocaleString() : '-'}</td>
+        <td style="font-weight:700">${u.generation.toLocaleString()}</td>
+        <td>${pct}%</td>
+        <td class="bar-cell"><div class="unit-bar"><div class="unit-bar-fill" style="width:${Math.min(pctNum, 100)}%;background:${barColor}"></div></div></td>
+        <td><span class="unit-status ${status.cls}">${esc(status.label)}</span></td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function fetchAllData() {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 8000);
+      const res = await fetch(DATA_URL + '?t=' + Math.floor(Date.now() / 60000), { signal: controller.signal });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      const { loadpara: loadText, genary: genData, fueltype: fuelText } = json;
+
+      const loadData = parseLoadPara(loadText);
+      if (loadData) updateSummaryCards(loadData);
+
+      const { units, fuelSummary } = parseGenary(genData);
+      allUnits = units;
+
+      renderGenChart(fuelSummary);
+      renderCapChart(fuelSummary);
+      renderFuelTabs(fuelSummary);
+      renderUnitTable();
+
+      const fuelData = parseFuelTypeCSV(fuelText);
+      renderLoadCurve(fuelData);
+    } catch (err) {
+      console.error('Fetch error:', err);
+      document.getElementById('statusBadgeContainer').innerHTML =
+        `<div class="error-msg"><h3>資料載入失敗</h3><p>${esc(err.message)}</p><button class="retry-btn" onclick="location.reload()">重新載入</button></div>`;
+    }
+  }
+
+  function applyTheme(dark) {
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    document.getElementById('themeToggle').textContent = dark ? '☀️' : '🌙';
+    localStorage.setItem('theme', dark ? 'dark' : 'light');
+  }
+
+  function init() {
+    const saved = localStorage.getItem('theme');
+    const preferDark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    applyTheme(preferDark);
+
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      applyTheme(!isDark);
+    });
+
+    document.querySelectorAll('.faq-item').forEach(item => {
+      item.querySelector('.faq-q').addEventListener('click', () => {
+        item.classList.toggle('open');
+      });
+    });
+
+    // #1: 只綁定一次
+    bindFuelTabs();
+
+    // #8: 顯示 loading
+    showLoading();
+
+    fetchAllData();
+    setInterval(fetchAllData, 600000);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+
+<script>document.querySelectorAll(".current-year").forEach(function (el) { el.textContent = new Date().getFullYear(); });</script>
+
+<footer class="open-source-attribution" style="padding:24px;text-align:center"><a href="https://upliftorch.com/">Upliftorch</a> · <a href="https://upliftorch.com/tools/power-grid/">Official demo / 線上工具</a></footer>
+</body>
+</html>
